@@ -25,8 +25,7 @@ export default function HomePage() {
             <h1 className="text-5xl md:text-7xl font-bold mb-6 text-balance">We Go Gym</h1>
             <p className="text-xl md:text-2xl mb-4 text-white/90 font-medium">Train Smarter. Grow Stronger.</p>
             <p className="text-lg md:text-xl mb-12 text-white/80 max-w-2xl mx-auto text-pretty">
-              A plataforma completa para gerenciar seus treinos, acompanhar sua evolução e conectar alunos com
-              treinadores profissionais.
+              A plataforma completa para gerenciar seus treinos e acompanhar sua evolução.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
@@ -65,7 +64,7 @@ export default function HomePage() {
               Tudo que você precisa para <span className="text-primary">evoluir</span>
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-              Uma plataforma completa que conecta alunos e treinadores com ferramentas profissionais de acompanhamento.
+              Uma plataforma completa para a evolução dos intusiastas em saúde.
             </p>
           </div>
 
@@ -77,7 +76,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Treinos Personalizados</h3>
                 <p className="text-muted-foreground text-pretty">
-                  Receba treinos criados especificamente para seus objetivos pelos melhores treinadores.
+                  Crie treinos individualizados com os módulos de exercíco para ter mais praticidade e eficiência.
                 </p>
               </CardContent>
             </Card>
@@ -99,9 +98,9 @@ export default function HomePage() {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Users className="text-primary" size={32} />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Conexão Direta</h3>
+                <h3 className="text-2xl font-bold mb-4">Praticidade</h3>
                 <p className="text-muted-foreground text-pretty">
-                  Comunicação direta entre alunos e treinadores para melhor acompanhamento.
+                  Toda a sua rotina de diferentes treinos reunida em um só lugar
                 </p>
               </CardContent>
             </Card>
@@ -109,13 +108,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Benefits Section */}
+{/* Benefits Section */}
       <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="max-w-3xl mx-auto">
+            
+            {/* Bloco dos Alunos  */}
             <div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-8 text-balance">
-                Para <span className="text-accent">Alunos</span>
+              <h2 className="text-4xl md:text-5xl font-bold mb-8 text-balance text-center">
+                Para <span className="text-accent">Atletas</span>
               </h2>
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
@@ -148,36 +149,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-8 text-balance">
-                Para <span className="text-primary">Treinadores</span>
-              </h2>
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4">
-                  <CheckCircle className="text-primary mt-1 flex-shrink-0" size={24} />
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">Gestão de Alunos</h3>
-                    <p className="text-muted-foreground">Gerencie todos seus alunos em uma plataforma centralizada.</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-4">
-                  <CheckCircle className="text-primary mt-1 flex-shrink-0" size={24} />
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">Criação de Treinos</h3>
-                    <p className="text-muted-foreground">Crie e atribua treinos personalizados para cada aluno.</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-4">
-                  <CheckCircle className="text-primary mt-1 flex-shrink-0" size={24} />
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">Acompanhamento Individual</h3>
-                    <p className="text-muted-foreground">
-                      Monitore o progresso de cada aluno e ajuste os treinos conforme necessário.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+
           </div>
         </div>
       </section>
