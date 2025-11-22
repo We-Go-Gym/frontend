@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Home, Dumbbell, Calculator, User, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 
 const navigation = [
   { name: "Início", href: "/student", icon: Home },
@@ -16,17 +17,21 @@ const navigation = [
 
 export function StudentNav() {
   const pathname = usePathname()
+  const router = useRouter()
 
   const handleLogout = () => {
-    console.log("Logging out...")
-    // Redirect to login page
-    window.location.href = "/login"
+    localStorage.removeItem("token")
+    router.push("/login")
   }
 
   return (
-    <nav className="bg-card border-r min-h-screen w-64 p-6 flex flex-col">
+
+    <nav className="flex flex-col h-full p-6 bg-card">
       <div className="flex items-center space-x-2 mb-8">
-        <Image src="/images/wgg-logo.png" alt="We Go Gym" width={32} height={32} className="rounded-full" />
+        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
+             <span className="font-bold text-xs">WGG</span> 
+             <Image src="/images/wgg-logo.png" alt="Logo" fill className="object-cover" /> 
+        </div>
         <span className="text-lg font-bold">We Go Gym</span>
       </div>
 
@@ -48,7 +53,7 @@ export function StudentNav() {
         })}
       </div>
 
-      <div className="mt-auto">
+      <div className="mt-auto pt-6">
         <Button variant="outline" className="w-full justify-start bg-transparent" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           Sair
