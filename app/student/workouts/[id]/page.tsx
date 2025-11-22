@@ -1,12 +1,20 @@
+"use client"
 
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Clock, Target, Zap, Play, ArrowLeft } from "lucide-react"
+import { Target, Zap, Play, ArrowLeft, Loader2, Plus, Pencil, Search } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
+import { toast } from "sonner"
 
-
+// Interfaces
 interface ExercicioData {
   id_exercicio: number
   nome_exercicio: string
@@ -20,155 +28,332 @@ interface TreinoData {
   descricao_treino: string
   categoria: string
   num_series: number
+  id_aluno: number
   exercicios: ExercicioData[]
 }
 
-// Busca um treino específico
-async function getWorkoutDetails(id: string): Promise<TreinoData | null> {
-  try {
-    const response = await fetch(`http://localhost:8000/Treino/${id}`, {
-      cache: "no-store",
-    })
-    if (!response.ok) {
-      throw new Error("Treino não encontrado")
-    }
-    return response.json()
-  } catch (error) {
-    console.error("Falha ao buscar detalhes do treino:", error)
-    return null
-  }
+interface WorkoutDetailsVisual {
+  id: string
+  name: string
+  description: string
+  category: string
+  exercises: ExercicioData[]
+  series: number
+  studentId: number
 }
 
-
-export default async function WorkoutDetailsPage({ params }: { params: { id: string } }) {
+export default function WorkoutDetailsPage() {
+  const params = useParams()
+  const router = useRouter()
   
+  const [isLoading, setIsLoading] = useState(true)
+  const [workout, setWorkout] = useState<WorkoutDetailsVisual | null>(null)
 
-  const workout = await getWorkoutDetails(params.id)
+  // Estados para modais
+  const [isEditing, setIsEditing] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
 
+  // Estados de dados
+  const [editForm, setEditForm] = useState({ name: "", description: "", category: "", series: "" })
+  const [allExercises, setAllExercises] = useState<ExercicioData[]>([])
+  const [exerciseSearch, setExerciseSearch] = useState("") 
+  const [selectedExerciseId, setSelectedExerciseId] = useState("")
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "Iniciante":
-        return "bg-green-100 text-green-800"
-      case "Intermediário":
-        return "bg-yellow-100 text-yellow-800"
-      case "Avançado":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+  // Busca detalhes
+  const fetchWorkoutDetails = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) { router.push("/login"); return }
+
+      const response = await fetch(`http://localhost:8000/Treino/${params.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store"
+      })
+
+      if (!response.ok) throw new Error("Treino não encontrado")
+
+      const data: TreinoData = await response.json()
+
+      setWorkout({
+        id: data.id_treino.toString(),
+        name: data.nome_treino,
+        description: data.descricao_treino,
+        category: data.categoria,
+        exercises: data.exercicios,
+        series: data.num_series,
+        studentId: data.id_aluno
+      })
+
+      setEditForm({
+        name: data.nome_treino,
+        description: data.descricao_treino,
+        category: data.categoria,
+        series: data.num_series.toString()
+      })
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
-
-  if (!workout) {
-    return (
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">Treino não encontrado</h1>
-        <p className="text-muted-foreground">O treino que você está procurando não existe.</p>
-        <Button variant="outline" size="sm" asChild className="mt-4">
-          <Link href="/student/workouts">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para Meus Treinos
-          </Link>
-        </Button>
-      </div>
-    )
+  // Busca exercícios
+  const fetchAllExercises = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/Exercicio/", { cache: "no-store" })
+      if (response.ok) {
+        const data = await response.json()
+        setAllExercises(data)
+      }
+    } catch (error) {
+      console.error("Erro de rede ao buscar exercícios:", error)
+    }
   }
-  
 
-  const workoutDetails = {
-    id: workout.id_treino.toString(),
-    name: workout.nome_treino,
-    description: workout.descricao_treino,
-    category: workout.categoria,
-    exercises: workout.exercicios, 
-    
-    // Campos "Chumbados" 
-    duration: 60, 
-    difficulty: "Intermediário",
+  useEffect(() => {
+    if (params.id) {
+      fetchWorkoutDetails()
+      fetchAllExercises()
+    }
+  }, [params.id, router])
+
+
+  // Salva edição
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!workout) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`http://localhost:8000/Treino/${workout.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          nome_treino: editForm.name,
+          descricao_treino: editForm.description,
+          categoria: editForm.category,
+          num_series: parseInt(editForm.series),
+          id_aluno: workout.studentId 
+        })
+      })
+
+      if (!response.ok) throw new Error("Erro ao editar treino")
+
+      toast.success("Treino atualizado!")
+      setIsEditing(false)
+      fetchWorkoutDetails() 
+
+    } catch (error) {
+      console.error(error)
+      toast.error("Falha ao atualizar treino")
+    }
   }
+
+  // Adiciona exercício ao treino
+  const handleAddExercise = async () => {
+    if (!selectedExerciseId) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`http://localhost:8000/Treino/${params.id}/exercicio/${selectedExerciseId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!response.ok) throw new Error("Erro ao adicionar")
+
+      toast.success("Exercício adicionado!")
+      setIsAdding(false)
+      setSelectedExerciseId("")
+      fetchWorkoutDetails() 
+
+    } catch (error) {
+      console.error(error)
+      toast.error("Erro ao adicionar exercício")
+    }
+  }
+
+  // Filtro local
+  const filteredExercises = allExercises.filter(ex => 
+    ex.nome_exercicio.toLowerCase().includes(exerciseSearch.toLowerCase())
+  )
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case "Hipertrofia": return "bg-purple-100 text-purple-800"
+      case "Força": return "bg-red-100 text-red-800"
+      case "Cardio": return "bg-blue-100 text-blue-800"
+      case "Funcional": return "bg-green-100 text-green-800"
+      default: return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  if (isLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin"/></div>
+
+  if (!workout) return <div>Treino não encontrado</div>
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-between">
         <Button variant="outline" size="sm" asChild>
           <Link href="/student/workouts">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
           </Link>
         </Button>
       </div>
 
-      {/* Workout Info  */}
+      {/* CARD TREINO */}
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-2xl mb-2">{workoutDetails.name}</CardTitle>
-              <CardDescription className="text-base">{workoutDetails.description}</CardDescription>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-2xl">{workout.name}</CardTitle>
+                <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Editar Treino</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleEditSubmit} className="space-y-4 pt-4">
+                      <div>
+                        <Label>Nome</Label>
+                        <Input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+                      </div>
+                      <div>
+                        <Label>Descrição</Label>
+                        <Input value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Categoria</Label>
+                          <Select value={editForm.category} onValueChange={v => setEditForm({...editForm, category: v})}>
+                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Hipertrofia">Hipertrofia</SelectItem>
+                              <SelectItem value="Força">Força</SelectItem>
+                              <SelectItem value="Cardio">Cardio</SelectItem>
+                              <SelectItem value="Funcional">Funcional</SelectItem>
+                              <SelectItem value="Flexibilidade">Flexibilidade</SelectItem>
+                              <SelectItem value="Resistência">Resistência</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Séries</Label>
+                          <Input type="number" value={editForm.series} onChange={e => setEditForm({...editForm, series: e.target.value})} />
+                        </div>
+                      </div>
+                      <Button type="submit" className="w-full">Salvar Alterações</Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <CardDescription className="text-base">{workout.description}</CardDescription>
             </div>
-            <Badge className={getDifficultyColor(workoutDetails.difficulty)}>
-              {workoutDetails.difficulty}
-            </Badge>
+            <Badge className={getCategoryColor(workout.category)}>{workout.category}</Badge>
           </div>
+          
           <div className="flex items-center space-x-6 text-sm text-muted-foreground mt-4">
             <div className="flex items-center">
-              <Clock className="mr-2 h-4 w-4" />
-              {workoutDetails.duration} minutos
-            </div>
-            <div className="flex items-center">
               <Target className="mr-2 h-4 w-4" />
-              {workoutDetails.exercises.length} exercícios
+              {workout.exercises.length} exercícios
             </div>
             <div className="flex items-center">
               <Zap className="mr-2 h-4 w-4" />
-              {workoutDetails.category}
+              {workout.series} séries
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <Button size="lg" className="w-full sm:w-auto">
-            <Play className="mr-2 h-4 w-4" />
-            Iniciar Treino
-          </Button>
-        </CardContent>
       </Card>
 
-      {/* Exercises  */}
+      {/* LISTA DE EXERCÍCIOS */}
       <div>
-        <h2 className="text-2xl font-bold mb-6">Exercícios</h2>
-        <div className="space-y-4">
-          
-          {workoutDetails.exercises.map((exercise, index) => (
-            <Card key={exercise.id_exercicio}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {index + 1}. {exercise.nome_exercicio}
-                    </CardTitle>
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-2">
-                      <span>{workout.num_series} séries</span>
-                      <span>{exercise.num_repeticoes} repetições</span>
-                      <span>Descanso: 60s</span>
+        <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">Exercícios</h2>
+            
+            <Dialog open={isAdding} onOpenChange={setIsAdding}>
+                <DialogTrigger asChild>
+                    <Button size="sm">
+                        <Plus className="mr-2 h-4 w-4" /> Adicionar Exercício
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Adicionar Exercício</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Buscar exercício..." 
+                                className="pl-8" 
+                                value={exerciseSearch}
+                                onChange={(e) => setExerciseSearch(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Select onValueChange={setSelectedExerciseId}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Selecione da lista..." />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-60">
+                                    {filteredExercises.length === 0 ? (
+                                        <div className="p-2 text-sm text-muted-foreground">Nenhum exercício encontrado.</div>
+                                    ) : (
+                                        filteredExercises.map((ex) => (
+                                            <SelectItem key={ex.id_exercicio} value={ex.id_exercicio.toString()}>
+                                                {ex.nome_exercicio}
+                                            </SelectItem>
+                                        ))
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button onClick={handleAddExercise} className="w-full" disabled={!selectedExerciseId}>
+                            Adicionar ao Treino
+                        </Button>
                     </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-3">{exercise.descricao_exercicio}</p>
-                <Separator className="my-3" />
-                <div className="bg-accent/10 p-3 rounded-lg">
-                  <p className="text-sm font-medium text-accent-foreground">💡 Dica:</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Mantenha a postura correta e foque na contração muscular.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </DialogContent>
+            </Dialog>
         </div>
+
+        {workout.exercises.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                Nenhum exercício neste treino.
+            </div>
+        ) : (
+            <div className="space-y-4">
+            {workout.exercises.map((exercise, index) => (
+                <Card key={`${exercise.id_exercicio}-${index}`}>
+                <CardHeader>
+                    <div className="flex items-start justify-between">
+                    <div>
+                        <CardTitle className="text-lg">
+                        {index + 1}. {exercise.nome_exercicio}
+                        </CardTitle>
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-2">
+                        <span>{workout.series} séries</span>
+                        <span>{exercise.num_repeticoes} repetições</span>
+                        </div>
+                    </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground mb-3">{exercise.descricao_exercicio}</p>
+                </CardContent>
+                </Card>
+            ))}
+            </div>
+        )}
       </div>
     </div>
   )

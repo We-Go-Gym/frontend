@@ -1,17 +1,13 @@
-
 "use client"
 
-
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { User, Edit, Save, X } from "lucide-react"
-
+import { User, Edit, Save, X, Loader2 } from "lucide-react"
 
 interface AlunoData {
   id_aluno: number
@@ -21,7 +17,6 @@ interface AlunoData {
   peso_kg: number
   altura: number
 }
-
 
 const initialState: AlunoData = {
   id_aluno: 0,
@@ -34,51 +29,60 @@ const initialState: AlunoData = {
 
 export default function StudentProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
-  
-
+  const [isLoading, setIsLoading] = useState(true)
   const [formData, setFormData] = useState<AlunoData>(initialState)
-  
+  const router = useRouter()
 
+  // Carrega os dados da rota (GET /Aluno/me)
   useEffect(() => {
-
-    const alunoId = 1
-    
-
-    async function fetchAlunoData() {
+    const fetchAlunoData = async () => {
       try {
+        const token = localStorage.getItem("token")
+        if (!token) {
+            router.push("/login")
+            return
+        }
 
-        const response = await fetch(`http://localhost:8000/Aluno/${alunoId}`)
+        
+        const response = await fetch(`http://localhost:8000/Aluno/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
         
         if (!response.ok) {
-          throw new Error("Falha ao buscar dados do aluno")
+             if (response.status === 401) {
+                localStorage.removeItem("token")
+                router.push("/login")
+                return
+             }
+             throw new Error("Falha ao buscar dados")
         }
         
         const data: AlunoData = await response.json()
-        
-
         setFormData(data)
         
       } catch (error) {
         console.error(error)
-
+      } finally {
+        setIsLoading(false)
       }
     }
 
     fetchAlunoData()
-  }, []) 
+  }, [router])
 
   
-
+  // Salva os dados 
   const handleSave = async () => {
-    const alunoId = formData.id_aluno
+    const token = localStorage.getItem("token")
+    const alunoId = formData.id_aluno 
     
     try {
       const response = await fetch(`http://localhost:8000/Aluno/${alunoId}`, {
-        method: "PATCH", 
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
-
         body: JSON.stringify({
           nome_aluno: formData.nome_aluno,
           email: formData.email,
@@ -88,45 +92,39 @@ export default function StudentProfilePage() {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error("Falha ao salvar dados do aluno")
-      }
+      if (!response.ok) throw new Error("Falha ao salvar")
 
       const updatedData: AlunoData = await response.json()
-      
-
       setFormData(updatedData)
       setIsEditing(false)
-      console.log("Perfil atualizado:", updatedData)
-
+      alert("Perfil atualizado com sucesso!")
 
     } catch (error) {
       console.error(error)
-      
+      alert("Erro ao salvar perfil")
     }
   }
 
-
   const handleCancel = () => {
-
     setIsEditing(false)
-
+    // Recarrega os dados originais
   }
-
 
   const getInitials = (name: string) => {
     if (!name) return "U"
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
-      {/* Cabeçalho com botões  */}
        <div className="flex items-center justify-between">
          <div>
            <h1 className="text-3xl font-bold mb-2">Meu Perfil</h1>
@@ -154,7 +152,6 @@ export default function StudentProfilePage() {
        </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Coluna da Esquerda - Resumo */}
         <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader className="text-center">
@@ -164,14 +161,6 @@ export default function StudentProfilePage() {
               </Avatar>
               <CardTitle className="text-xl">{formData.nome_aluno}</CardTitle>
               <CardDescription>{formData.email}</CardDescription>
-
-            </CardHeader>
-          </Card>
-
-          {/* Estatísticas Físicas */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Estatísticas Físicas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between">
@@ -190,7 +179,6 @@ export default function StudentProfilePage() {
           </Card>
         </div>
 
-        {/* Coluna da Direita - Informações Detalhadas */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
@@ -216,11 +204,10 @@ export default function StudentProfilePage() {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    disabled={!isEditing}
+                    disabled={true} // Email não pode mudar
+                    className="bg-muted"
                   />
                 </div>
-
                  <div className="space-y-2">
                   <Label htmlFor="age">Idade</Label>
                   <Input
@@ -232,24 +219,20 @@ export default function StudentProfilePage() {
                   />
                 </div>
               </div>
-
             </CardContent>
           </Card>
-
-          {/* Informações Físicas */}
           <Card>
             <CardHeader>
               <CardTitle>Informações Físicas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                 <div className="space-y-2">
                   <Label htmlFor="height">Altura (m)</Label>
                   <Input
                     id="height"
                     type="number"
-                    step="0.01" 
+                    step="0.01"
                     value={formData.altura}
                     onChange={(e) => setFormData({ ...formData, altura: Number.parseFloat(e.target.value) })}
                     disabled={!isEditing}
@@ -267,10 +250,8 @@ export default function StudentProfilePage() {
                   />
                 </div>
               </div>
-              
             </CardContent>
           </Card>
-          
         </div>
       </div>
     </div>

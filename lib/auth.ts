@@ -1,97 +1,36 @@
-// Mock authentication utilities
+// Define a cara do nosso usuário (igual ao retorno da API)
 export interface User {
-  id: string
-  name: string
+  id: number
   email: string
-  userType: "student" | "trainer"
-  createdAt: Date
+  papel: "aluno" | "admin"
 }
 
-export interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-}
+export async function getCurrentUser(): Promise<User | null> {
+  // Tenta pegar o token do navegador só funciona pro lado do cliente
+  if (typeof window === "undefined") return null
+  
+  const token = localStorage.getItem("token")
+  if (!token) return null
 
-// Mock user data
-const mockUsers: User[] = [
-  {
-    id: "1",
-    name: "João Silva",
-    email: "joao@email.com",
-    userType: "student",
-    createdAt: new Date(),
-  },
-  {
-    id: "2",
-    name: "Maria Santos",
-    email: "maria@email.com",
-    userType: "trainer",
-    createdAt: new Date(),
-  },
-]
+  try {
+    // Valida o token
+    const response = await fetch("http://localhost:8001/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    })
 
-export async function login(email: string, password: string): Promise<User | null> {
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-
-  if (email === "treinador@gmail.com" && password === "123") {
-    const trainerUser = mockUsers.find((u) => u.userType === "trainer")
-    if (trainerUser) {
-      // Salvar usuário no localStorage
-      localStorage.setItem("currentUser", JSON.stringify(trainerUser))
-      return trainerUser
-    }
-  }
-
-  if (email === "aluno@gmail.com" && password === "123") {
-    const studentUser = mockUsers.find((u) => u.userType === "student")
-    if (studentUser) {
-      // Salvar usuário no localStorage
-      localStorage.setItem("currentUser", JSON.stringify(studentUser))
-      return studentUser
-    }
-  }
-
-  return null
-}
-
-export async function register(userData: {
-  name: string
-  email: string
-  password: string
-  userType: "student" | "trainer"
-}): Promise<User> {
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-
-  const newUser: User = {
-    id: Date.now().toString(),
-    name: userData.name,
-    email: userData.email,
-    userType: userData.userType,
-    createdAt: new Date(),
-  }
-
-  mockUsers.push(newUser)
-  return newUser
-}
-
-export function logout(): void {
-  localStorage.removeItem("currentUser")
-  console.log("User logged out")
-}
-
-export function getCurrentUser(): User | null {
-  if (typeof window === "undefined") return null // SSR check
-
-  const storedUser = localStorage.getItem("currentUser")
-  if (storedUser) {
-    try {
-      return JSON.parse(storedUser)
-    } catch {
+    if (!response.ok) {
+      // Se der erro, o token é invalido e depois descartado
+      localStorage.removeItem("token")
       return null
     }
-  }
 
-  return null
+    // Retorna os dados do usuário
+    return await response.json()
+  } catch (error) {
+    console.error("Erro ao verificar autenticação:", error)
+    return null
+  }
 }

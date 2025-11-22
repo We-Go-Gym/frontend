@@ -5,16 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calculator } from "lucide-react"
-import { useRouter } from "next/navigation" 
-
-
-interface ImcResponse {
-  id_imc: number
-  valor_imc: number
-  dt_calculo: string
-  id_aluno: number
-}
-
 
 interface BMIResult {
   bmi: number
@@ -23,11 +13,16 @@ interface BMIResult {
   description: string
 }
 
+interface ImcResponse {
+  id_imc: number
+  valor_imc: number
+  dt_calculo: string
+  id_aluno: number
+}
 
-export function BMICalculator({ alunoId }: { alunoId: number }) {
+export function BMICalculator({ alunoId, onUpdate }: { alunoId: number, onUpdate: () => void }) {
   const [result, setResult] = useState<BMIResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter() 
 
   const classifyBMI = (bmi: number): BMIResult => {
     const roundedBMI = Math.round(bmi * 10) / 10
@@ -60,25 +55,22 @@ export function BMICalculator({ alunoId }: { alunoId: number }) {
     setResult(null)
     
     try {
-      //  CHAMAMOS O BACKEND 
       const response = await fetch(`http://localhost:8000/Imc/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_aluno: alunoId }), // Enviamos só o ID
+        body: JSON.stringify({ id_aluno: alunoId }),
       })
 
       if (!response.ok) {
-        // Se a API falhar (ex: altura 0), mostramos o erro
         const errorData = await response.json()
         throw new Error(errorData.detail || "Falha ao calcular IMC")
       }
 
       const newImc: ImcResponse = await response.json()
-
-      // 2. Classificamos o resultado que veio do backend
       setResult(classifyBMI(newImc.valor_imc))
       
-      router.refresh()
+      // Chama o pai para recarregar os dados
+      onUpdate() 
 
     } catch (error: any) {
       console.error(error)
@@ -109,7 +101,6 @@ export function BMICalculator({ alunoId }: { alunoId: number }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        
         <div className="flex gap-2">
           <Button onClick={handleCalculateAndSave} disabled={isLoading} className="flex-1">
             {isLoading ? "Calculando..." : "Calcular e Salvar IMC"}
@@ -120,7 +111,6 @@ export function BMICalculator({ alunoId }: { alunoId: number }) {
             </Button>
           )}
         </div>
-
         {result && (
           <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
             <div className="text-center">

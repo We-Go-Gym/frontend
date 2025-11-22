@@ -6,21 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Scale } from "lucide-react"
-import { useRouter } from "next/navigation"
-
 
 interface WeightTrackerProps {
   alunoId: number
   currentWeight: number
   currentHeight: number
+  onUpdate: () => void
 }
 
-export function WeightTracker({ alunoId, currentWeight, currentHeight }: WeightTrackerProps) {
-  
+export function WeightTracker({ alunoId, currentWeight, currentHeight, onUpdate }: WeightTrackerProps) {
   const [newWeight, setNewWeight] = useState(currentWeight.toString())
-  const [newHeight, setNewHeight] = useState(currentHeight.toString()) 
+  const [newHeight, setNewHeight] = useState(currentHeight.toString())
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
 
   const handleUpdateWeight = async () => {
     const weightValue = Number.parseFloat(newWeight)
@@ -34,7 +31,7 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight }: WeightT
     setIsLoading(true)
     
     try {
-      //  ATUALIZA O ALUNO (Peso e Altura)
+      // Atualiza Peso e/ou Altura
       const response = await fetch(`http://localhost:8000/Aluno/${alunoId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -44,24 +41,18 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight }: WeightT
         }),
       })
 
-      if (!response.ok) {
-        throw new Error("Falha ao atualizar o peso/altura do aluno")
-      }
+      if (!response.ok) throw new Error("Falha ao atualizar")
 
-
-      const imcResponse = await fetch(`http://localhost:8000/Imc/`, {
+      // Gera novo IMC
+      await fetch(`http://localhost:8000/Imc/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_aluno: alunoId }),
       })
 
-      if (!imcResponse.ok) {
-        throw new Error("Peso salvo, mas falha ao registrar novo IMC")
-      }
-
-
-      router.refresh()
-      alert("Peso, Altura e IMC atualizados com sucesso!") 
+      // Chama o update
+      onUpdate()
+      alert("Atualizado com sucesso!")
 
     } catch (error: any) {
       console.error(error)
@@ -83,7 +74,6 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight }: WeightT
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Formulário de atualização */}
         <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -92,7 +82,6 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight }: WeightT
                 id="newWeight"
                 type="number"
                 step="0.1"
-                placeholder="72.5"
                 value={newWeight}
                 onChange={(e) => setNewWeight(e.target.value)}
               />
@@ -103,7 +92,6 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight }: WeightT
                 id="newHeight"
                 type="number"
                 step="0.01"
-                placeholder="1.75"
                 value={newHeight}
                 onChange={(e) => setNewHeight(e.target.value)}
               />
@@ -114,8 +102,6 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight }: WeightT
              {isLoading ? "Salvando..." : "Salvar Medidas"}
            </Button>
         </div>
-
-
       </CardContent>
     </Card>
   )

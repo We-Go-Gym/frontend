@@ -1,10 +1,13 @@
+"use client"
 
+import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { BMICalculator } from "@/components/bmi-calculator"
 import { WeightTracker } from "@/components/weight-tracker"
 import { BMIProgressChart } from "@/components/bmi-progress-chart"
+import { Loader2 } from "lucide-react"
 
-
-
+// Interfaces
 interface ImcData {
   id_imc: number
   valor_imc: number
@@ -20,40 +23,61 @@ interface AlunoData {
   historico_imc: ImcData[] 
 }
 
+export default function ProgressPage() {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
+  const [aluno, setAluno] = useState<AlunoData | null>(null)
 
-async function getProgressData(alunoId: number): Promise<AlunoData | null> {
-  try {
-    const response = await fetch(`http://localhost:8000/Aluno/${alunoId}`, {
-      cache: "no-store", 
-    })
-    if (!response.ok) {
-      throw new Error("Falha ao buscar dados do aluno")
+  const fetchData = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        router.push("/login")
+        return
+      }
+
+      const response = await fetch("http://localhost:8000/Aluno/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("token")
+          router.push("/login")
+          return
+        }
+        throw new Error("Falha ao buscar dados")
+      }
+
+      const data: AlunoData = await response.json()
+      setAluno(data)
+
+    } catch (error) {
+      console.error("Erro:", error)
+    } finally {
+      setIsLoading(false)
     }
-    return response.json()
-  } catch (error) {
-    console.error("Erro:", error)
-    return null
-  }
-}
+  }, [router])
 
+  // O useEffect agora só chama a função acima
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
-export default async function ProgressPage() {
-  
-
-  const aluno = await getProgressData(1)
-
-
-  if (!aluno) {
+  if (isLoading) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Erro ao carregar dados</h1>
-        <p className="text-muted-foreground">
-          Não foi possível buscar os dados do aluno. Verifique se o backend está rodando.
-        </p>
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
+  if (!aluno) {
+    return <div>Erro ao carregar dados.</div>
+  }
 
   return (
     <div className="space-y-8">
@@ -65,29 +89,25 @@ export default async function ProgressPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Coluna da Esquerda */}
         <div className="space-y-8">
           
-          {/* Passamos o ID do aluno para a calculadora */}
-          <BMICalculator alunoId={aluno.id_aluno} />
+          <BMICalculator 
+            alunoId={aluno.id_aluno} 
+            onUpdate={fetchData} 
+          />
           
-          {/* Passamos os dados de peso para o registrador */}
           <WeightTracker
             alunoId={aluno.id_aluno}
             currentWeight={aluno.peso_kg}
             currentHeight={aluno.altura}
+            onUpdate={fetchData}
           />
 
         </div>
 
-        {/* Coluna da Direita */}
         <div className="space-y-8">
-          
-
-          
-          {/* Passamos o histórico de IMC  para o gráfico */}
+          {/* O gráfico vai atualizar sozinho quando */}
           <BMIProgressChart data={aluno.historico_imc} />
-          
         </div>
       </div>
     </div>
