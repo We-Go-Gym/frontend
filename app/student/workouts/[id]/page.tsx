@@ -49,9 +49,16 @@ export default function WorkoutDetailsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [workout, setWorkout] = useState<WorkoutDetailsVisual | null>(null)
 
-    // Estados pros modais
+  // Definição da URL base
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
+  // Estados pros modais de edição/adição
   const [isEditing, setIsEditing] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
+
+  // Estados pro modal de remoção 
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [exerciseIdToDelete, setExerciseIdToDelete] = useState<number | null>(null)
 
   // Estados dos dados
   const [editForm, setEditForm] = useState({ name: "", description: "", category: "", series: "" })
@@ -65,7 +72,7 @@ export default function WorkoutDetailsPage() {
       const token = localStorage.getItem("token")
       if (!token) { router.push("/login"); return }
 
-      const response = await fetch(`http://localhost:8000/Treino/${params.id}`, {
+      const response = await fetch(`${API_URL}/Treino/${params.id}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store"
       })
@@ -100,7 +107,7 @@ export default function WorkoutDetailsPage() {
   // Busca exercícios
   const fetchAllExercises = async () => {
     try {
-      const response = await fetch("http://localhost:8000/Exercicio/", { cache: "no-store" })
+      const response = await fetch(`${API_URL}/Exercicio/`, { cache: "no-store" })
       if (response.ok) {
         const data = await response.json()
         setAllExercises(data)
@@ -115,7 +122,7 @@ export default function WorkoutDetailsPage() {
       fetchWorkoutDetails()
       fetchAllExercises()
     }
-  }, [params.id, router])
+  }, [params.id, router, API_URL])
 
 
   // Salva edição
@@ -125,7 +132,7 @@ export default function WorkoutDetailsPage() {
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`http://localhost:8000/Treino/${workout.id}`, {
+      const response = await fetch(`${API_URL}/Treino/${workout.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -158,7 +165,7 @@ export default function WorkoutDetailsPage() {
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`http://localhost:8000/Treino/${params.id}/exercicio/${selectedExerciseId}`, {
+      const response = await fetch(`${API_URL}/Treino/${params.id}/exercicio/${selectedExerciseId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -176,21 +183,28 @@ export default function WorkoutDetailsPage() {
     }
   }
 
-  // Função que remove um exercício de um treino
-  const handleRemoveExercise = async (exerciseId: number) => {
-    if (!confirm("Tem certeza que quer remover este exercício?")) return
+  // Abre o modal de confirmação
+  const confirmRemoveExercise = (exerciseId: number) => {
+    setExerciseIdToDelete(exerciseId)
+    setIsDeleteModalOpen(true)
+  }
+
+  //  Remove o exercício do treino 
+  const executeRemoveExercise = async () => {
+    if (!exerciseIdToDelete) return
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`http://localhost:8000/Treino/${params.id}/exercicio/${exerciseId}`, {
+      const response = await fetch(`${API_URL}/Treino/${params.id}/exercicio/${exerciseIdToDelete}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       })
 
       if (!response.ok) throw new Error("Erro ao remover")
 
-      toast.success("Exercício removido!")
-      fetchWorkoutDetails() 
+      toast.success("Exercício removido do treino!")
+      setIsDeleteModalOpen(false) // Fecha modal
+      fetchWorkoutDetails() // Atualiza lista
 
     } catch (error) {
       console.error(error)
@@ -343,6 +357,28 @@ export default function WorkoutDetailsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Modal de Confirmação de Remoção  */}
+            <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Remover Exercício</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    <p className="text-sm text-black">
+                        Tem certeza que deseja remover este exercício do treino?
+                    </p>
+                </div>
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+                        Cancelar
+                    </Button>
+                    <Button variant="destructive" className="bg-red-600 hover:bg-red-700 text-white" onClick={executeRemoveExercise}>
+                        Remover
+                    </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
         </div>
 
         {workout.exercises.length === 0 ? (
@@ -365,12 +401,12 @@ export default function WorkoutDetailsPage() {
                         </div>
                     </div>
                     
-                    {/* Botão de remover exercício*/}
+                    {/* Botão de remover exercício */}
                     <Button 
                         variant="ghost" 
                         size="icon" 
                         className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                        onClick={() => handleRemoveExercise(exercise.id_exercicio)}
+                        onClick={() => confirmRemoveExercise(exercise.id_exercicio)}
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>

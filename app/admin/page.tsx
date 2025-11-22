@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Dumbbell, Plus, Pencil, Trash2, Loader2, LogOut } from "lucide-react"
+import { Dumbbell, Plus, Pencil, Trash2, Loader2, LogOut } from "lucide-react" // AlertTriangle removido
 import { toast } from "sonner"
 import { ProtectedRoute } from "@/components/protected-route"
 
@@ -25,8 +25,15 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [exercises, setExercises] = useState<ExercicioData[]>([])
   
-  // Estado do Modal
+  // Definição da URL base
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+  
+  // Estado do Modal de Criação/Edição
   const [isModalOpen, setIsModalOpen] = useState(false)
+  
+  // Estado do Modal de Deleção
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [idToDelete, setIdToDelete] = useState<number | null>(null)
   
   // Estado do Formulário
   const [isEditing, setIsEditing] = useState(false)
@@ -41,7 +48,7 @@ export default function AdminPage() {
   const fetchExercises = async () => {
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch("http://localhost:8000/Exercicio/", {
+      const response = await fetch(`${API_URL}/Exercicio/`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store"
       })
@@ -62,6 +69,7 @@ export default function AdminPage() {
     fetchExercises()
   }, [])
 
+  // Abre modal de criar/editar
   const openModal = (exercise?: ExercicioData) => {
     if (exercise) {
       setIsEditing(true)
@@ -79,14 +87,15 @@ export default function AdminPage() {
     setIsModalOpen(true)
   }
 
+  
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     const token = localStorage.getItem("token")
     
     try {
       const url = isEditing 
-        ? `http://localhost:8000/Exercicio/${currentId}` 
-        : `http://localhost:8000/Exercicio/`            
+        ? `${API_URL}/Exercicio/${currentId}` 
+        : `${API_URL}/Exercicio/`            
       
       const method = isEditing ? "PUT" : "POST"
 
@@ -115,13 +124,19 @@ export default function AdminPage() {
     }
   }
 
-  // Deleta um exercício
-  const handleDelete = async (id: number) => {
-    if (!confirm("Tem certeza que deseja apagar este exercício?")) return
+  // Abre o modal de confirmação
+  const confirmDelete = (id: number) => {
+    setIdToDelete(id)
+    setIsDeleteModalOpen(true)
+  }
+
+  // Executa a deleção de fato
+  const executeDelete = async () => {
+    if (!idToDelete) return
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`http://localhost:8000/Exercicio/${id}`, {
+      const response = await fetch(`${API_URL}/Exercicio/${idToDelete}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -129,7 +144,8 @@ export default function AdminPage() {
       if (!response.ok) throw new Error("Erro ao apagar")
 
       toast.success("Exercício removido!")
-      fetchExercises()
+      setIsDeleteModalOpen(false) // Fecha o modal
+      fetchExercises() // Atualiza a lista
 
     } catch (error) {
       console.error(error)
@@ -158,6 +174,7 @@ export default function AdminPage() {
           </div>
 
           <div className="flex justify-end">
+            {/* Modal de Criar/Editar */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => openModal()} className="bg-primary text-white">
@@ -203,6 +220,33 @@ export default function AdminPage() {
                 </form>
               </DialogContent>
             </Dialog>
+
+            {/* Modal de Confirmação de Exclusão  */}
+            <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  {/* Removido o ícone e a cor vermelha */}
+                  <DialogTitle>
+                    Confirmar Exclusão
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    {/* Texto preto agora */}
+                    <p className="text-sm text-black">
+                        Tem certeza que deseja excluir este exercício permanentemente? Essa ação não pode ser desfeita.
+                    </p>
+                </div>
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+                        Cancelar
+                    </Button>
+                    <Button variant="destructive" className="bg-red-600 hover:bg-red-700 text-white" onClick={executeDelete}>
+                        Excluir
+                    </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
           </div>
 
           {/* Lista de Exercícios */}
@@ -222,7 +266,6 @@ export default function AdminPage() {
                       </div>
                       <div className="flex gap-1">
                         
-
                         <Button 
                             variant="ghost" 
                             size="icon" 
@@ -232,11 +275,11 @@ export default function AdminPage() {
                           <Pencil className="h-4 w-4" />
                         </Button>
 
-
+                        {/* Chama a função confirmDelete */}
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={() => handleDelete(ex.id_exercicio)}
+                            onClick={() => confirmDelete(ex.id_exercicio)}
                             className="hover:bg-red-100 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />

@@ -19,6 +19,9 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight, onUpdate 
   const [newHeight, setNewHeight] = useState(currentHeight.toString())
   const [isLoading, setIsLoading] = useState(false)
 
+  // Definição da URL base
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
   const handleUpdateWeight = async () => {
     const weightValue = Number.parseFloat(newWeight)
     const heightValue = Number.parseFloat(newHeight)
@@ -31,8 +34,8 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight, onUpdate 
     setIsLoading(true)
     
     try {
-      // Atualiza Peso e/ou Altura
-      const response = await fetch(`http://localhost:8000/Aluno/${alunoId}`, {
+      // Atualiza Peso e/ou Altura usando API_URL
+      const response = await fetch(`${API_URL}/Aluno/${alunoId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -43,8 +46,8 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight, onUpdate 
 
       if (!response.ok) throw new Error("Falha ao atualizar")
 
-      // Gera novo IMC
-      await fetch(`http://localhost:8000/Imc/`, {
+      // Gera novo IMC usando API_URL
+      await fetch(`${API_URL}/Imc/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_aluno: alunoId }),
@@ -52,7 +55,7 @@ export function WeightTracker({ alunoId, currentWeight, currentHeight, onUpdate 
 
       // Chama o update
       onUpdate()
-      alert("Atualizado com sucesso!")
+
 
     } catch (error: any) {
       console.error(error)

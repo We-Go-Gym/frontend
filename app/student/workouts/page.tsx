@@ -32,6 +32,9 @@ export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<WorkoutCardProps[]>([])
   const [alunoId, setAlunoId] = useState<number | null>(null)
 
+  // Definição da URL base
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
   // Estados de Filtro
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
@@ -50,7 +53,8 @@ export default function WorkoutsPage() {
       const token = localStorage.getItem("token")
       if (!token) { router.push("/login"); return }
 
-      const response = await fetch("http://localhost:8000/Aluno/me", {
+
+      const response = await fetch(`${API_URL}/Aluno/me`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       })
@@ -90,13 +94,13 @@ export default function WorkoutsPage() {
 
   useEffect(() => {
     fetchWorkouts()
-  }, [router])
+  }, [router, API_URL])
 
   // Apagar um treino
   const handleDeleteWorkout = async (workoutId: string) => {
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`http://localhost:8000/Treino/${workoutId}`, {
+      const response = await fetch(`${API_URL}/Treino/${workoutId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -119,7 +123,7 @@ export default function WorkoutsPage() {
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch("http://localhost:8000/Treino/", {
+      const response = await fetch(`${API_URL}/Treino/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

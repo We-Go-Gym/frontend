@@ -24,6 +24,9 @@ export function BMICalculator({ alunoId, onUpdate }: { alunoId: number, onUpdate
   const [result, setResult] = useState<BMIResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Definição da URL base
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
   const classifyBMI = (bmi: number): BMIResult => {
     const roundedBMI = Math.round(bmi * 10) / 10
     let category = ""
@@ -55,7 +58,7 @@ export function BMICalculator({ alunoId, onUpdate }: { alunoId: number, onUpdate
     setResult(null)
     
     try {
-      const response = await fetch(`http://localhost:8000/Imc/`, {
+      const response = await fetch(`${API_URL}/Imc/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_aluno: alunoId }),

@@ -48,6 +48,9 @@ export default function StudentDashboard() {
   const [aluno, setAluno] = useState<AlunoData | null>(null)
   const [treinosFormatados, setTreinosFormatados] = useState<WorkoutCardProps[]>([])
   
+  // Definição da URL base 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
   // Estado para as estatísticas reais
   const [stats, setStats] = useState({
     totalTreinos: 0,
@@ -63,7 +66,7 @@ export default function StudentDashboard() {
         const token = localStorage.getItem("token")
         if (!token) { router.push("/login"); return }
         
-        const response = await fetch("http://localhost:8000/Aluno/me", {
+        const response = await fetch(`${API_URL}/Aluno/me`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         })
@@ -114,7 +117,7 @@ export default function StudentDashboard() {
     }
 
     fetchData()
-  }, [router])
+  }, [router, API_URL]) 
 
   if (isLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin"/></div>
   if (!aluno) return null

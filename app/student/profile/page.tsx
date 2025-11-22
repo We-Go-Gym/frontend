@@ -33,7 +33,10 @@ export default function StudentProfilePage() {
   const [formData, setFormData] = useState<AlunoData>(initialState)
   const router = useRouter()
 
-  // Carrega os dados da rota (GET /Aluno/me)
+  // Definição da URL base
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
+  // Carrega os dados da rota GET/Aluno/me
   useEffect(() => {
     const fetchAlunoData = async () => {
       try {
@@ -43,8 +46,8 @@ export default function StudentProfilePage() {
             return
         }
 
-        
-        const response = await fetch(`http://localhost:8000/Aluno/me`, {
+
+        const response = await fetch(`${API_URL}/Aluno/me`, {
             headers: { Authorization: `Bearer ${token}` }
         })
         
@@ -68,7 +71,7 @@ export default function StudentProfilePage() {
     }
 
     fetchAlunoData()
-  }, [router])
+  }, [router, API_URL])
 
   
   // Salva os dados 
@@ -77,7 +80,8 @@ export default function StudentProfilePage() {
     const alunoId = formData.id_aluno 
     
     try {
-      const response = await fetch(`http://localhost:8000/Aluno/${alunoId}`, {
+
+      const response = await fetch(`${API_URL}/Aluno/${alunoId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -107,7 +111,7 @@ export default function StudentProfilePage() {
 
   const handleCancel = () => {
     setIsEditing(false)
-    // Recarrega os dados originais
+  
   }
 
   const getInitials = (name: string) => {

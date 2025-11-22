@@ -48,7 +48,7 @@ export function AuthForm({ type }: AuthFormProps) {
     setIsLoading(true)
 
     try {
-      // Pegamos as URLs do .env (ou usamos localhost como fallback)
+      // Pegamos as URLs do .env ou usamos localhost como fallback
       const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL || "http://localhost:8001"
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -85,7 +85,7 @@ export function AuthForm({ type }: AuthFormProps) {
         // Registro
         if (formData.password !== formData.confirmPassword) throw new Error("As senhas não coincidem!")
 
-        // Criar na APi de Autenticação
+        // Cria na APi de Autenticação
         const authResponse = await fetch(`${AUTH_URL}/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -101,7 +101,7 @@ export function AuthForm({ type }: AuthFormProps) {
             throw new Error(err.detail || "Erro ao criar usuário")
         }
 
-        // Criar no Backend
+        // Cria no Backend
         const mainResponse = await fetch(`${API_URL}/Aluno/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -116,7 +116,7 @@ export function AuthForm({ type }: AuthFormProps) {
 
         if (!mainResponse.ok) throw new Error("Erro ao criar perfil")
 
-        toast.success("Conta criada! Faça login.")
+
         router.push("/login")
       }
     } catch (error: any) {

@@ -58,7 +58,7 @@ export function BMIProgressChart({ data }: { data: ImcData[] }) {
           <ResponsiveContainer width="100%" height="100%">
             {formattedData.length === 0 ? (
                <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                 Nenhum dado registrado ainda.
+
                </div>
             ) : (
               <LineChart data={formattedData}>

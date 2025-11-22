@@ -28,6 +28,9 @@ export default function ProgressPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [aluno, setAluno] = useState<AlunoData | null>(null)
 
+  // Definição da URL base
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
   const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token")
@@ -36,7 +39,8 @@ export default function ProgressPage() {
         return
       }
 
-      const response = await fetch("http://localhost:8000/Aluno/me", {
+ 
+      const response = await fetch(`${API_URL}/Aluno/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -60,7 +64,7 @@ export default function ProgressPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [router])
+  }, [router, API_URL])
 
   // O useEffect agora só chama a função acima
   useEffect(() => {
@@ -106,7 +110,7 @@ export default function ProgressPage() {
         </div>
 
         <div className="space-y-8">
-          {/* O gráfico vai atualizar sozinho quando */}
+          {/* O gráfico vai atualizar sozinho quando atualizar os dados */}
           <BMIProgressChart data={aluno.historico_imc} />
         </div>
       </div>
