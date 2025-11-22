@@ -5,14 +5,11 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { WorkoutCard } from "@/components/workout-card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, TrendingUp, Target, Award, Loader2 } from "lucide-react"
+import { Dumbbell, Activity, TrendingUp, Weight, Loader2 } from "lucide-react" // Ícones novos
 
-// Interfaces 
+// Interfaces
 interface ExercicioData {
   id_exercicio: number
-  nome_exercicio: string
-  descricao_exercicio: string
-  num_repeticoes: number
 }
 
 interface TreinoData {
@@ -24,27 +21,25 @@ interface TreinoData {
   exercicios: ExercicioData[]
 }
 
+interface ImcData {
+  valor_imc: number
+}
+
 interface AlunoData {
   id_aluno: number
   nome_aluno: string
+  peso_kg: number
   treinos: TreinoData[]
+  historico_imc: ImcData[]
 }
 
 interface WorkoutCardProps {
   id: string
   name: string
   description: string
-  duration: number
-  difficulty: "Iniciante" | "Intermediário" | "Avançado"
-  exercises: number
   category: string
-}
-
-const mockStats = {
-  workoutsThisWeek: 0,
-  totalWorkouts: 0,
-  currentStreak: 0,
-  nextWorkout: "A definir",
+  exercises: number
+  series: number
 }
 
 export default function StudentDashboard() {
@@ -52,23 +47,25 @@ export default function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [aluno, setAluno] = useState<AlunoData | null>(null)
   const [treinosFormatados, setTreinosFormatados] = useState<WorkoutCardProps[]>([])
+  
+  // Estado para as estatísticas reais
+  const [stats, setStats] = useState({
+    totalTreinos: 0,
+    totalExercicios: 0,
+    imcAtual: "0.0",
+    pesoAtual: 0
+  })
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Pega o Token do navegador
         const token = localStorage.getItem("token")
-
-        if (!token) {
-          router.push("/login")
-          return
-        }
-
-        // Chama a API Principal na rota /me Segura
+        if (!token) { router.push("/login"); return }
+        
         const response = await fetch("http://localhost:8000/Aluno/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
         })
 
         if (!response.ok) {
@@ -78,24 +75,36 @@ export default function StudentDashboard() {
             router.push("/login")
             return
           }
-          throw new Error("Falha ao buscar dados")
+          throw new Error("Erro ao buscar dados")
         }
 
         const data: AlunoData = await response.json()
         setAluno(data)
 
-        // Traduz os treinos para o formato do Card
-        const treinos = data.treinos.map((treino) => ({
+        // treino mais novo primeiro
+        const treinosOrdenados = data.treinos.sort((a, b) => b.id_treino - a.id_treino)
+
+        const treinos = treinosOrdenados.map((treino) => ({
           id: treino.id_treino.toString(),
           name: treino.nome_treino,
           description: treino.descricao_treino,
           category: treino.categoria,
           exercises: treino.exercicios.length,
-          // Dados Mockados (visual)
-          duration: 60,
-          difficulty: "Intermediário" as const,
+          series: treino.num_series,
         }))
         setTreinosFormatados(treinos)
+
+        const totalEx = data.treinos.reduce((acc, curr) => acc + curr.exercicios.length, 0)
+        const ultimoImc = data.historico_imc.length > 0 
+            ? data.historico_imc[data.historico_imc.length - 1].valor_imc.toFixed(1) 
+            : "--"
+
+        setStats({
+            totalTreinos: data.treinos.length,
+            totalExercicios: totalEx,
+            imcAtual: ultimoImc,
+            pesoAtual: data.peso_kg
+        })
 
       } catch (error) {
         console.error("Erro:", error)
@@ -107,14 +116,7 @@ export default function StudentDashboard() {
     fetchData()
   }, [router])
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
+  if (isLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin"/></div>
   if (!aluno) return null
 
   const primeiroNome = aluno.nome_aluno.split(" ")[0]
@@ -123,60 +125,62 @@ export default function StudentDashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold mb-2">Olá, {primeiroNome}!</h1>
-        <p className="text-muted-foreground">
-          Bem-vindo de volta. Vamos continuar sua jornada fitness!
-        </p>
+        <p className="text-muted-foreground">Bem-vindo de volta. Aqui está o resumo do seu progresso.</p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Treinos esta semana</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total de Treinos</CardTitle>
+            <Dumbbell className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{treinosFormatados.length > 0 ? 1 : 0}</div>
-            <p className="text-xs text-muted-foreground">Treinos ativos</p>
+            <div className="text-2xl font-bold">{stats.totalTreinos}</div>
+            <p className="text-xs text-muted-foreground">Criados por você</p>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de treinos</CardTitle>
+            <CardTitle className="text-sm font-medium">Exercícios Totais</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalExercicios}</div>
+            <p className="text-xs text-muted-foreground">Em todos os seus treinos</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Seu IMC Atual</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockStats.totalWorkouts}</div>
-            <p className="text-xs text-muted-foreground">Desde o início</p>
+            <div className="text-2xl font-bold">{stats.imcAtual}</div>
+            <p className="text-xs text-muted-foreground">Calculado recentemente</p>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sequência atual</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Peso Atual</CardTitle>
+            <Weight className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockStats.currentStreak}</div>
-            <p className="text-xs text-muted-foreground">dias consecutivos</p>
+            <div className="text-2xl font-bold">{stats.pesoAtual} kg</div>
+            <p className="text-xs text-muted-foreground">Última medição</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Próximo treino</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm font-bold">{mockStats.nextWorkout}</div>
-            <p className="text-xs text-muted-foreground">Agendado para hoje</p>
-          </CardContent>
-        </Card>
+
       </div>
 
-      {/* Current Workouts */}
+      {/* Lista de treinos */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Seus Treinos</h2>
-          <Badge variant="secondary">{treinosFormatados.length} treinos ativos</Badge>
         </div>
 
         {treinosFormatados.length === 0 ? (
