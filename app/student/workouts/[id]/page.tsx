@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Target, Zap, Play, ArrowLeft, Loader2, Plus, Pencil, Search } from "lucide-react"
+import { Target, Zap, Play, ArrowLeft, Loader2, Plus, Pencil, Search, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -49,11 +49,11 @@ export default function WorkoutDetailsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [workout, setWorkout] = useState<WorkoutDetailsVisual | null>(null)
 
-  // Estados para modais
+    // Estados pros modais
   const [isEditing, setIsEditing] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
 
-  // Estados de dados
+  // Estados dos dados
   const [editForm, setEditForm] = useState({ name: "", description: "", category: "", series: "" })
   const [allExercises, setAllExercises] = useState<ExercicioData[]>([])
   const [exerciseSearch, setExerciseSearch] = useState("") 
@@ -106,7 +106,7 @@ export default function WorkoutDetailsPage() {
         setAllExercises(data)
       }
     } catch (error) {
-      console.error("Erro de rede ao buscar exercícios:", error)
+      console.error("Erro ao buscar exercícios:", error)
     }
   }
 
@@ -176,7 +176,28 @@ export default function WorkoutDetailsPage() {
     }
   }
 
-  // Filtro local
+  // Função que remove um exercício de um treino
+  const handleRemoveExercise = async (exerciseId: number) => {
+    if (!confirm("Tem certeza que quer remover este exercício?")) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`http://localhost:8000/Treino/${params.id}/exercicio/${exerciseId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!response.ok) throw new Error("Erro ao remover")
+
+      toast.success("Exercício removido!")
+      fetchWorkoutDetails() 
+
+    } catch (error) {
+      console.error(error)
+      toast.error("Falha ao remover exercício")
+    }
+  }
+
   const filteredExercises = allExercises.filter(ex => 
     ex.nome_exercicio.toLowerCase().includes(exerciseSearch.toLowerCase())
   )
@@ -187,6 +208,8 @@ export default function WorkoutDetailsPage() {
       case "Força": return "bg-red-100 text-red-800"
       case "Cardio": return "bg-blue-100 text-blue-800"
       case "Funcional": return "bg-green-100 text-green-800"
+      case "Flexibilidade": return "bg-pink-100 text-pink-800"
+      case "Resistência": return "bg-gray-100 text-gray-800"
       default: return "bg-gray-100 text-gray-800"
     }
   }
@@ -204,8 +227,8 @@ export default function WorkoutDetailsPage() {
           </Link>
         </Button>
       </div>
-
-      {/* CARD TREINO */}
+      
+      {/* Card do treino */}
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -235,7 +258,7 @@ export default function WorkoutDetailsPage() {
                         <div>
                           <Label>Categoria</Label>
                           <Select value={editForm.category} onValueChange={v => setEditForm({...editForm, category: v})}>
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Hipertrofia">Hipertrofia</SelectItem>
                               <SelectItem value="Força">Força</SelectItem>
@@ -260,7 +283,7 @@ export default function WorkoutDetailsPage() {
             </div>
             <Badge className={getCategoryColor(workout.category)}>{workout.category}</Badge>
           </div>
-          
+
           <div className="flex items-center space-x-6 text-sm text-muted-foreground mt-4">
             <div className="flex items-center">
               <Target className="mr-2 h-4 w-4" />
@@ -274,11 +297,11 @@ export default function WorkoutDetailsPage() {
         </CardHeader>
       </Card>
 
-      {/* LISTA DE EXERCÍCIOS */}
+      {/* Lista de exercícios */}
       <div>
         <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Exercícios</h2>
-            
+
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
                 <DialogTrigger asChild>
                     <Button size="sm">
@@ -303,18 +326,14 @@ export default function WorkoutDetailsPage() {
                         <div className="space-y-2">
                             <Select onValueChange={setSelectedExerciseId}>
                                 <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Selecione da lista..." />
+                                    <SelectValue placeholder="Selecione..." />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-60">
-                                    {filteredExercises.length === 0 ? (
-                                        <div className="p-2 text-sm text-muted-foreground">Nenhum exercício encontrado.</div>
-                                    ) : (
-                                        filteredExercises.map((ex) => (
-                                            <SelectItem key={ex.id_exercicio} value={ex.id_exercicio.toString()}>
-                                                {ex.nome_exercicio}
-                                            </SelectItem>
-                                        ))
-                                    )}
+                                    {filteredExercises.map((ex) => (
+                                        <SelectItem key={ex.id_exercicio} value={ex.id_exercicio.toString()}>
+                                            {ex.nome_exercicio}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -345,6 +364,17 @@ export default function WorkoutDetailsPage() {
                         <span>{exercise.num_repeticoes} repetições</span>
                         </div>
                     </div>
+                    
+                    {/* Botão de remover exercício*/}
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                        onClick={() => handleRemoveExercise(exercise.id_exercicio)}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+
                     </div>
                 </CardHeader>
                 <CardContent>

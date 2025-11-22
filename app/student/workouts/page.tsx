@@ -18,7 +18,7 @@ interface WorkoutCardProps {
   description: string
   category: string
   exercises: number
-  series: number 
+  series: number
 }
 
 interface AlunoData {
@@ -67,7 +67,7 @@ export default function WorkoutsPage() {
       const data: AlunoData = await response.json()
       setAlunoId(data.id_aluno)
 
-      // Ordenação para o treino mais novo aparecer primeiro
+      // Treinos mais novos apareçem primeiro
       const treinosOrdenados = data.treinos.sort((a, b) => b.id_treino - a.id_treino)
 
       const formattedWorkouts = treinosOrdenados.map((treino: any) => ({
@@ -76,7 +76,7 @@ export default function WorkoutsPage() {
         description: treino.descricao_treino,
         category: treino.categoria,
         exercises: treino.exercicios.length,
-        series: treino.num_series, 
+        series: treino.num_series,
       }))
 
       setWorkouts(formattedWorkouts)
@@ -91,6 +91,27 @@ export default function WorkoutsPage() {
   useEffect(() => {
     fetchWorkouts()
   }, [router])
+
+  // Apagar um treino
+  const handleDeleteWorkout = async (workoutId: string) => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`http://localhost:8000/Treino/${workoutId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!response.ok) throw new Error("Erro ao apagar")
+
+      toast.success("Treino apagado com sucesso")
+      // Recarrega a lista para sumir com o treino apagado
+      fetchWorkouts() 
+
+    } catch (error) {
+      console.error(error)
+      toast.error("Erro ao apagar treino")
+    }
+  }
 
   const handleCreateWorkout = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,7 +147,7 @@ export default function WorkoutsPage() {
     }
   }
 
-  // Filtro tem busca por nome e/ou categoria
+  // Filtro pelo nome e/ou categoria
   const filteredWorkouts = workouts.filter(workout => {
     const matchesSearch = workout.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = categoryFilter === "all" || workout.category === categoryFilter
@@ -156,7 +177,7 @@ export default function WorkoutsPage() {
                     <div>
                         <Label>Nome do Treino</Label>
                         <Input 
-                            placeholder="Ex: Treino A" 
+                            placeholder="Ex: Treino A - Peito" 
                             value={newWorkout.nome}
                             onChange={e => setNewWorkout({...newWorkout, nome: e.target.value})}
                             required
@@ -165,7 +186,7 @@ export default function WorkoutsPage() {
                     <div>
                         <Label>Descrição</Label>
                         <Input 
-                            placeholder="Ex: Foco em superiores" 
+                            placeholder="Foco em força..." 
                             value={newWorkout.descricao}
                             onChange={e => setNewWorkout({...newWorkout, descricao: e.target.value})}
                             required
@@ -180,10 +201,12 @@ export default function WorkoutsPage() {
                             >
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
+                                    {/* Categorias */}
                                     <SelectItem value="Hipertrofia">Hipertrofia</SelectItem>
                                     <SelectItem value="Força">Força</SelectItem>
                                     <SelectItem value="Cardio">Cardio</SelectItem>
                                     <SelectItem value="Funcional">Funcional</SelectItem>
+                                    <SelectItem value="Flexibilidade">Flexibilidade</SelectItem>
                                     <SelectItem value="Resistência">Resistência</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -225,6 +248,8 @@ export default function WorkoutsPage() {
             <SelectItem value="Cardio">Cardio</SelectItem>
             <SelectItem value="Força">Força</SelectItem>
             <SelectItem value="Funcional">Funcional</SelectItem>
+            <SelectItem value="Funcional">Flexibilidade</SelectItem>
+            <SelectItem value="Funcional">Resistência</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -232,12 +257,17 @@ export default function WorkoutsPage() {
       {/* Grid de Treinos */}
       {filteredWorkouts.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground">
-            {searchTerm || categoryFilter !== "all" ? "Nenhum treino encontrado para os filtros." : "Você ainda não possui treinos cadastrados."}
+          {searchTerm || categoryFilter !== "all" ? "Nenhum treino encontrado para os filtros." : "Você ainda não possui treinos cadastrados."}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Delete passado pro card */}
           {filteredWorkouts.map((workout) => (
-            <WorkoutCard key={workout.id} workout={workout} />
+            <WorkoutCard 
+                key={workout.id} 
+                workout={workout} 
+                onDelete={handleDeleteWorkout} 
+            />
           ))}
         </div>
       )}
